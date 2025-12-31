@@ -1,50 +1,29 @@
-# Welcome to your Expo app 👋
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+# Expense Pet
 
-## Get started
+[![React Native](https://img.shields.io/badge/React_Native-2025-blue?style=for-the-badge&logo=react)](https://reactnative.dev/)  
+[![Expo](https://img.shields.io/badge/Expo-48-purple?style=for-the-badge&logo=expo)](https://expo.dev/)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-1. Install dependencies
+**Expense Pet** adalah aplikasi mobile yang membantu pengguna mengatur pengeluaran sehari-hari sekaligus merawat hewan peliharaan virtual. Setiap pengeluaran yang dicatat akan memengaruhi kondisi peliharaan dalam aplikasi.  
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## Fitur
 
-   ```bash
-   npx expo start
-   ```
+- Pelihara hewan virtual dengan kondisi yang berubah sesuai pengeluaran.  
+- Catat pengeluaran harian dengan mudah.  
+- Ringkasan pengeluaran mingguan atau bulanan.  
+- Notifikasi untuk mengingatkan pencatatan pengeluaran.  
+- Tampilan tema responsif untuk berbagai ukuran layar.  
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Instalasi
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+1. Clone repository:  
 
 ```bash
-npm run reset-project
-```
+git clone https://github.com/username/expense-pet.git
+cd expense-pet
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
