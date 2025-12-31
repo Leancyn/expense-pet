@@ -1,0 +1,12 @@
+{
+  "build": {
+    "release": {
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      }
+    }
+  }
+}
