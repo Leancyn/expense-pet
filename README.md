@@ -24,6 +24,6 @@
 1. Clone repository:  
 
 ```bash
-git clone https://github.com/username/expense-pet.git
+git clone https://github.com/Leancyn/expense-pet.git
 cd expense-pet
 
