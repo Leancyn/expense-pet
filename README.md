@@ -20,14 +20,16 @@
 
 ## Icon & Screenshot
 
-**Icon APK:**  
+
+### Icon APK
 <p align="center">
   <img src="./assets/images/favicon.png" alt="Expense Pet Icon" width="120">
 </p>
 
-**Tampilan Aplikasi (APK):**  
+### Tampilan Aplikasi (APK)
 <p align="center">
-  <img src="./assets/images/tampilan-app.jpg" alt="Screenshot 1" width="200">
+  <img src="./assets/images/tampilan-app.jpg" alt="Screenshot 1" width="250" style="margin:10px">
+  <img src="/mnt/data/7c3d638c-eb00-4ec4-b096-da2ea4cc2fb1.png" alt="Screenshot 2" width="250" style="margin:10px">
 </p>
 
 ---
