@@ -1,12 +1,10 @@
 {
   "build": {
-    "release": {
+    "production": {
       "android": {
-        "buildType": "apk"
+        "buildType": "apk" // atau "apk" kalau mau APK langsung
       },
-      "ios": {
-        "simulator": false
-      }
+      "releaseChannel": "production"
     }
   }
 }

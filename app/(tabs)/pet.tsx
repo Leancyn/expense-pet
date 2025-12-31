@@ -4,13 +4,9 @@ import { loadWallet, saveWallet } from "@/storage/walletStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Easing, Image, LayoutAnimation, Platform, Pressable, StyleSheet, Text, TextInput, UIManager, View } from "react-native";
+import { Animated, Easing, Image, LayoutAnimation, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { SafeAreaView } from "react-native-safe-area-context";
-
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const allPets = [
   { id: "1", name: "Kucing", price: 50, asset: require("../../assets/pets/cat.gif") },
@@ -23,6 +19,7 @@ const allPets = [
 ];
 
 export default function ExpensePetScreen() {
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [pet, setPet] = useState({ health: 100 });
@@ -102,45 +99,51 @@ export default function ExpensePetScreen() {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#d9f0ff" }}>
-      <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: "#d9f0ff" }} contentContainerStyle={{ flexGrow: 1, padding: 16 }} enableOnAndroid keyboardShouldPersistTaps="handled" keyboardOpeningTime={0}>
-        <View style={styles.petCard}>
-          {activePetAsset && <Image source={activePetAsset} style={styles.petImage} />}
-
-          <View style={styles.healthBarWrapper}>
-            <View style={styles.healthBarBackground}>
-              <Animated.View style={[styles.healthBarFill, { width: healthWidth, backgroundColor: healthColor }]} />
-              <Text style={styles.healthText}>{pet.health}%</Text>
-            </View>
-          </View>
-
-          <View style={styles.coinRow}>
-            <Image source={require("../../assets/images/coin.gif")} style={styles.coinImage} />
-            <Text style={styles.walletText}>{wallet.coins}</Text>
+    <KeyboardAwareScrollView
+      style={{ flex: 1, backgroundColor: "#d9f0ff" }}
+      contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16, paddingHorizontal: 16, flexGrow: 1 }}
+      enableOnAndroid
+      keyboardShouldPersistTaps="handled"
+      keyboardOpeningTime={0}
+      scrollEnabled={false}
+      extraScrollHeight={Platform.OS === "ios" ? 80 : 20}
+    >
+      {/* Pet Card */}
+      <View style={styles.petCard}>
+        {activePetAsset && <Image source={activePetAsset} style={styles.petImage} />}
+        <View style={styles.healthBarWrapper}>
+          <View style={styles.healthBarBackground}>
+            <Animated.View style={[styles.healthBarFill, { width: healthWidth, backgroundColor: healthColor }]} />
+            <Text style={styles.healthText}>{pet.health}%</Text>
           </View>
         </View>
-
-        <View style={styles.expenseCard}>
-          <Text style={styles.label}>Nama Pengeluaran</Text>
-          <TextInput value={name} onChangeText={setName} placeholder="Contoh: Makan Siang" placeholderTextColor="#9ca3af" style={styles.input} />
-          <Text style={styles.label}>Jumlah (IDR)</Text>
-          <TextInput value={amount} onChangeText={setAmount} keyboardType="numeric" placeholder="Contoh: 50000" placeholderTextColor="#9ca3af" style={styles.input} />
-          <Pressable onPress={submitExpense} style={styles.submitButton}>
-            <Text style={styles.buttonText}>Simpan Pengeluaran</Text>
-          </Pressable>
+        <View style={styles.coinRow}>
+          <Image source={require("../../assets/images/coin.gif")} style={styles.coinImage} />
+          <Text style={styles.walletText}>{wallet.coins}</Text>
         </View>
-      </KeyboardAwareScrollView>
-    </SafeAreaView>
+      </View>
+
+      {/* Expense Card */}
+      <View style={styles.expenseCard}>
+        <Text style={styles.label}>Nama Pengeluaran</Text>
+        <TextInput value={name} onChangeText={setName} placeholder="Contoh: Makan Siang" placeholderTextColor="#9ca3af" style={styles.input} />
+        <Text style={styles.label}>Jumlah (IDR)</Text>
+        <TextInput value={amount} onChangeText={setAmount} keyboardType="numeric" placeholder="Contoh: 50000" placeholderTextColor="#9ca3af" style={styles.input} />
+        <Pressable onPress={submitExpense} style={styles.submitButton}>
+          <Text style={styles.buttonText}>Simpan Pengeluaran</Text>
+        </Pressable>
+      </View>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  coinRow: { flexDirection: "row", alignItems: "center", marginTop: 12 },
+  coinRow: { flexDirection: "row", alignItems: "center", marginTop: 12, zIndex: 2 },
   coinImage: { width: 24, height: 24, marginRight: 6 },
   walletText: { fontSize: 16, fontWeight: "bold", color: "#f59e0b" },
 
-  container: { padding: 16, backgroundColor: "#d9f0ff", flexGrow: 1 },
   petCard: {
+    width: "100%",
     backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 16,
@@ -153,8 +156,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 6,
+    zIndex: 1,
+    marginTop: -15, // pastikan di atas background
   },
-  petImage: { width: 160, height: 160, borderRadius: 12 },
+  petImage: { width: 100, height: 100, borderRadius: 12 },
   healthBarWrapper: { width: "100%", alignItems: "center", marginTop: 12 },
   healthBarBackground: {
     width: "80%",
@@ -167,8 +172,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   healthBarFill: { height: "100%", position: "absolute", left: 0 },
-  healthText: { textAlign: "center", fontWeight: "bold", color: "#111827", zIndex: 1 },
+  healthText: { textAlign: "center", fontWeight: "bold", color: "#111827", zIndex: 2 },
   expenseCard: {
+    width: "100%",
     backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 16,
@@ -179,6 +185,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 6,
+    marginTop: 2,
   },
   label: { fontSize: 16, color: "#6b7280", marginBottom: 8 },
   input: {

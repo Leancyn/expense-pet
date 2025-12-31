@@ -1,1 +1,15 @@
 npx expo start -c
+
+eas build -p android --profile production
+
+
+
+keystore
+
+Configuration: Build Credentials 1mn301Fe8j (Default)  
+Keystore
+Type                JKS
+Key Alias           59a2d16f6419a8a3f49b08efa3bbefac
+MD5 Fingerprint     55:2C:F2:DB:DF:14:A2:D5:61:AA:80:F5:3E:C8:B5:69
+SHA1 Fingerprint    76:11:85:D9:A6:3A:F3:B6:4A:BE:51:63:51:37:C0:D5:14:F4:BA:8F
+SHA256 Fingerprint  CF:6F:39:A2:E1:33:63:E7:25:6C:CC:25:EC:5A:12:2A:D5:BA:65:87:7C:03:5E:62:5B:52:A4:48:4E:BD:6D:06
