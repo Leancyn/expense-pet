@@ -26,3 +26,11 @@ export async function getExpenses(): Promise<Expense[]> {
     return [];
   }
 }
+
+// Fungsi baru: ambil expense hari ini
+export const getDailyExpenses = async (): Promise<{ amount: number; date: string }[]> => {
+  const json = await AsyncStorage.getItem("expenses");
+  const allExpenses = json ? JSON.parse(json) : [];
+  const today = new Date().toISOString().slice(0, 10); // format YYYY-MM-DD
+  return allExpenses.filter((e: any) => e.date.slice(0, 10) === today);
+};

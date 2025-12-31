@@ -1,34 +1,57 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Platform, Pressable, StyleSheet, Text, View, Modal, Image } from "react-native";
+import { useState } from "react";
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState<"warning" | "success">("warning");
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
 
-  const resetData = async () => {
-    Alert.alert("Reset Data", "Apakah kamu yakin ingin menghapus semua data?", [
-      { text: "Batal", style: "cancel" },
-      {
-        text: "Ya, hapus",
-        style: "destructive",
-        onPress: async () => {
-          await AsyncStorage.clear();
-          Alert.alert("Data berhasil direset!");
-          router.push("/"); // kembali ke home
-        },
-      },
-    ]);
+  const showModal = (type: "warning" | "success", title: string, message: string, autoClose = false) => {
+    setModalType(type);
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalVisible(true);
+
+    if (autoClose) {
+      setTimeout(() => setModalVisible(false), 700); // hilang sendiri
+    }
   };
 
-  const sendFeedback = () => {
+  const resetData = () => {
+    showModal("warning", "Reset Data", "Apakah kamu yakin ingin menghapus semua data?");
+  };
+
+  const confirmReset = async () => {
+    await AsyncStorage.clear();
+    showModal("success", "Berhasil", "Data berhasil direset!", true);
+  };
+
+  const sendFeedback = async () => {
     const email = "ridhombrk889@gmail.com";
     const subject = encodeURIComponent("Masukan / Bug Expense Pet");
     const body = encodeURIComponent("Halo, saya ingin memberikan masukan atau melaporkan bug:\n\n");
-    Linking.openURL(`mailto:${email}?subject=${subject}&body=${body}`);
+    const url = `mailto:${email}?subject=${subject}&body=${body}`;
+
+    const supported = await Linking.canOpenURL(url);
+    if (!supported) {
+      showModal("warning", "Error", "Tidak bisa membuka aplikasi email.");
+      return;
+    }
+    await Linking.openURL(url);
+  };
+
+  const modalIcon = () => {
+    if (modalType === "success") return require("../../assets/modal-icons/success.gif");
+    return require("../../assets/modal-icons/warning.gif");
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.header}>Settings</Text>
 
       {/* Card Aplikasi */}
@@ -42,12 +65,18 @@ export default function SettingsScreen() {
       {/* Card Info */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Info</Text>
-        <Text style={styles.infoText}>Versi: 1.0.0</Text>
+        <Text style={styles.infoText}>Versi: {Constants.expoConfig?.version}</Text>
+        <Text style={styles.infoText}>Build: Production</Text>
+        <Text style={styles.infoText}>Platform: {Platform.OS}</Text>
+
+        <View style={styles.divider} />
+
         <Text style={styles.infoText}>Expense Pet © 2025</Text>
         <Text style={styles.infoText}>Created by: Leancyn</Text>
+        <Text style={styles.tagline}>Catat pengeluaran, selamatkan pet kamu</Text>
       </View>
 
-      {/* Feedback di bawah */}
+      {/* Card Feedback */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Masukan & Bug</Text>
         <Pressable style={[styles.button, styles.primaryButton]} onPress={sendFeedback}>
@@ -55,52 +84,56 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
 
-      <View style={{ marginBottom: 16 }}>
-        <Pressable onPress={() => router.back()} style={[styles.button, { backgroundColor: "#3b82f6" }]}>
-          <Text style={styles.buttonText}>Kembali</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+      {/* Tombol Kembali */}
+      <Pressable onPress={() => router.back()} style={[styles.button, { backgroundColor: "#3b82f6" }]}>
+        <Text style={styles.buttonText}>Kembali</Text>
+      </Pressable>
+
+      {/* Modal */}
+      <Modal transparent visible={modalVisible} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Image source={modalIcon()} style={styles.modalIcon} />
+            <Text style={styles.modalTitle}>{modalTitle}</Text>
+            <Text style={styles.modalText}>{modalMessage}</Text>
+
+            {modalType === "warning" && (
+              <View style={styles.modalButtonRow}>
+                <Pressable style={[styles.modalButton, styles.cancelButton]} onPress={() => setModalVisible(false)}>
+                  <Text style={styles.modalButtonText}>Batal</Text>
+                </Pressable>
+                <Pressable style={[styles.modalButton, styles.dangerButton]} onPress={confirmReset}>
+                  <Text style={styles.modalButtonText}>Ya, Hapus</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
-
+  
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: "#fefce8", // background cerah
-    flexGrow: 1,
-  },
-  header: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#6b7280",
-    marginBottom: 24,
-    textAlign: "center",
-  },
+  container: { padding: 16, backgroundColor: "#fefce8", flex: 1, justifyContent: "center" },
+  header: { fontSize: 28, fontWeight: "bold", color: "#6b7280", marginBottom: 14,marginTop: -30, textAlign: "center" },
   card: {
     backgroundColor: "#ffffff",
     borderRadius: 24,
     borderWidth: 4,
     borderColor: "#000",
-    padding: 20,
-    marginBottom: 16,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
+    shadowOffset: { width: 2, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 6,
+    elevation: 4,
   },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#374151",
-    marginBottom: 12,
-  },
-  infoText: {
-    fontSize: 16,
-    color: "#6b7280",
-    marginBottom: 8,
-  },
+  cardTitle: { fontSize: 20, fontWeight: "700", color: "#374151", marginBottom: 12 },
+  infoText: { fontSize: 16, color: "#6b7280", marginBottom: 8 },
+  tagline: { marginTop: 6, fontSize: 12, color: "#9ca3af", textAlign: "center" },
+  divider: { height: 1, backgroundColor: "#e5e7eb", marginVertical: 10, width: "100%" },
   button: {
     paddingVertical: 12,
     borderRadius: 16,
@@ -108,20 +141,50 @@ const styles = StyleSheet.create({
     borderColor: "#000",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
+    marginVertical: 8,
+  },
+  primaryButton: { backgroundColor: "#22c55e" },
+  dangerButton: { backgroundColor: "#ef4444" },
+  successButton: { backgroundColor: "#22c55e" },
+  buttonText: { fontSize: 16, fontWeight: "bold", color: "#fff" },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
+  modalContainer: {
+    width: "80%",
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 4,
+    borderColor: "#000",
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+    alignItems: "center",
+  },
+  modalIcon: { width: 48, height: 48, marginBottom: 12 },
+  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 10, color: "#374151", textAlign: "center" },
+  modalText: { fontSize: 16, color: "#6b7280", textAlign: "center", marginBottom: 12 },
+  modalButtonRow: { flexDirection: "row", justifyContent: "center", width: "100%" },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 4,
+    borderColor: "#000",
+    alignItems: "center",
+    marginHorizontal: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 2,
     elevation: 3,
   },
-  primaryButton: {
-    backgroundColor: "#22c55e",
-  },
-  dangerButton: {
-    backgroundColor: "#ef4444",
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#fff",
-  },
+  cancelButton: { backgroundColor: "#9ca3af" },
+  modalButtonText: { fontSize: 16, fontWeight: "bold", color: "#fff" },
 });

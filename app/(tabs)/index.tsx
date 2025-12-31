@@ -2,9 +2,9 @@ import { getExpenses } from "@/storage/expenseStorage";
 import { Expense } from "@/types/expense";
 import DailyChart from "components/DailyChart";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { LayoutAnimation, ScrollView, StyleSheet, Text, View } from "react-native";
-
+import { checkDailyExpenseNotification, requestNotificationPermission, scheduleDailyReminder } from "utils/notifications";
 
 export default function HomeScreen() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -14,6 +14,30 @@ export default function HomeScreen() {
     const data = await getExpenses();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpenses(data);
+  }, []);
+
+  useEffect(() => {
+    scheduleDailyReminder(20, 0);
+    requestNotificationPermission();
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      const granted = await requestNotificationPermission();
+      if (!granted) return;
+
+      // Cek langsung saat buka app
+      await checkDailyExpenseNotification();
+
+      // Cek tiap 1 menit
+      const interval = setInterval(async () => {
+        await checkDailyExpenseNotification();
+      }, 60000);
+
+      return () => clearInterval(interval);
+    };
+
+    init();
   }, []);
 
   // Reload setiap tab muncul

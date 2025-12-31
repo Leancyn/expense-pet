@@ -28,13 +28,12 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e5e7eb", // abu-abu terang
   },
   appName: {
-    color: "#6b7280", // teks abu-abu
+    color: "#2f95dc", 
     fontSize: 24,
     fontWeight: "bold",
   },
   iconButton: {
     padding: 8,
-    borderRadius: 8,
-    backgroundColor: "#f3f4f6", // tombol abu-abu terang
+    borderRadius: 8, // tombol abu-abu terang
   },
 });

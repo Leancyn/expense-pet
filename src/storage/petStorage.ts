@@ -5,12 +5,13 @@ const KEY = "pet";
 export type Pet = {
   health: number;
   level: number;
+  exp: number; // tambah exp
 };
 
 // Dapatkan data pet
 export const getPet = async (): Promise<Pet> => {
   const json = await AsyncStorage.getItem(KEY);
-  return json ? JSON.parse(json) : { health: 100, level: 1 };
+  return json ? JSON.parse(json) : { health: 10, level: 1, exp: 0 };
 };
 
 // Simpan data pet
@@ -22,29 +23,26 @@ export const savePet = async (pet: Pet) => {
 export const updatePetByExpense = async (amount: number) => {
   const pet = await getPet();
   let newHealth = pet.health;
+  let newExp = pet.exp ?? 0;
+  let newLevel = pet.level ?? 1;
 
-  // Aturan gamelike
-  if (amount >= 50000) {
-    newHealth -= 10; // pengeluaran besar → health turun
-  } else {
-    newHealth += 5; // pengeluaran kecil → health naik
-  }
+  // Health naik sesuai pengeluaran
+  if (amount >= 50000) newHealth += 40; // pengeluaran besar
+  else newHealth += 15; // pengeluaran kecil
 
-  let newLevel = pet.level;
+  // Health max 100
+  newHealth = Math.min(newHealth, 100);
 
-  // Level up
-  if (newHealth > 100) {
+  // Exp naik per 1000 IDR
+  newExp += Math.floor(amount / 1000);
+
+  // Level up tiap exp >= 100
+  while (newExp >= 100) {
     newLevel += 1;
-    newHealth = newHealth - 100; // sisa health ke level baru
+    newExp -= 100;
   }
 
-  // Level down
-  if (newHealth <= 0) {
-    newLevel = Math.max(1, newLevel - 1);
-    newHealth = 50; // reset health minimal
-  }
-
-  const newPet = { health: newHealth, level: newLevel };
+  const newPet = { health: newHealth, level: newLevel, exp: newExp };
   await savePet(newPet);
   return newPet;
 };

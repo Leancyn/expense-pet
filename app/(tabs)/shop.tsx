@@ -2,7 +2,7 @@ import { loadWallet, saveWallet } from "@/storage/walletStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const petsForSale = [
   { id: "1", name: "Kucing", price: 50, asset: require("../../assets/pets/cat.gif") },
@@ -18,6 +18,16 @@ export default function ShopScreen() {
   const [wallet, setWallet] = useState({ coins: 0 });
   const [ownedPets, setOwnedPets] = useState<string[]>([]);
   const router = useRouter();
+  const [showAlert, setShowAlert] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+
+  const showModal = (title: string, message: string) => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalVisible(true);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -45,19 +55,23 @@ export default function ShopScreen() {
 
   const handleBuyPet = async (pet: (typeof petsForSale)[0]) => {
     if (ownedPets.includes(pet.id)) {
-      Alert.alert("Kamu sudah punya pet ini!");
+      showModal("Pet sudah dimiliki", `Kamu sudah punya ${pet.name}`);
       return;
     }
+
     if (wallet.coins >= pet.price) {
       const newCoins = wallet.coins - pet.price;
       const newOwned = [...ownedPets, pet.id];
+
       setWallet({ coins: newCoins });
       setOwnedPets(newOwned);
+
       await saveWallet({ coins: newCoins });
       await AsyncStorage.setItem("ownedPets", JSON.stringify(newOwned));
-      Alert.alert(`Berhasil beli ${pet.name}!`);
+
+      showModal("Berhasil", `${pet.name} berhasil dibeli`);
     } else {
-      Alert.alert("Coin tidak cukup!");
+      showModal("Coin tidak cukup", `Butuh ${pet.price} coin`);
     }
   };
 
@@ -103,6 +117,18 @@ export default function ShopScreen() {
           );
         }}
       />
+      <Modal transparent visible={modalVisible} animationType="fade">
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>{modalTitle}</Text>
+            <Text style={styles.modalText}>{modalMessage}</Text>
+
+            <TouchableOpacity style={styles.modalButton} onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -146,4 +172,55 @@ const styles = StyleSheet.create({
   buyButton: { backgroundColor: "#f59e0b" },
   useButton: { backgroundColor: "#22c55e" },
   petButtonText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  modal: {
+    width: "85%",
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 4,
+    borderColor: "#111827",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: 8,
+  },
+
+  modalText: {
+    fontSize: 15,
+    color: "#374151",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+
+  modalButton: {
+    backgroundColor: "#f59e0b",
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 4,
+    borderBottomWidth: 6,
+    borderColor: "#d97706",
+  },
+
+  modalButtonText: {
+    color: "#ffffff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
 });

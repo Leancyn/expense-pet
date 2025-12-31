@@ -2,7 +2,8 @@
   "build": {
     "production": {
       "android": {
-        "buildType": "apk" // atau "apk" kalau mau APK langsung
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
       "releaseChannel": "production"
     }

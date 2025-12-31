@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const theme = {
   background: "#ffffff",
   tint: "#2f95dc",
-  tabIconDefault: "#9ca3af",
+  tabIconDefault: "#2f95dc",
   border: "#e2e2e2",
 };
 
@@ -99,7 +99,7 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   iconWrapper: {
-    width: 31,
+    width: 51,
     height: 31,
     borderRadius: 10,
     justifyContent: "center",

@@ -1,11 +1,12 @@
 import { getExpenses } from "@/storage/expenseStorage";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 type ExpenseItem = { id: string; name: string; amount: number; date: string };
 
 export default function WalletHistoryScreen() {
+  const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
   const [history, setHistory] = useState<ExpenseItem[]>([]);
   const [filter, setFilter] = useState<"day" | "week" | "month">("day");
 
@@ -22,21 +23,56 @@ export default function WalletHistoryScreen() {
     }, [loadHistory])
   );
 
+  useEffect(() => {
+    const initial: Record<string, boolean> = {};
+    Object.keys(grouped).forEach((date) => {
+      initial[date] = true;
+    });
+    setExpandedDates(initial);
+  }, [filter, history.length]);
+
+  // toggle handler
+  const toggleDate = (date: string) => {
+    setExpandedDates((prev) => ({
+      ...prev,
+      [date]: !prev[date],
+    }));
+  };
+
   // helper filter
   const filteredHistory = history.filter((item) => {
     const itemDate = new Date(item.date);
     const now = new Date();
 
     if (filter === "day") {
-      return itemDate.getDate() === now.getDate() && itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
-    } else if (filter === "week") {
-      const oneJan = new Date(now.getFullYear(), 0, 1);
-      const currentWeek = Math.ceil(((now.getTime() - oneJan.getTime()) / 86400000 + oneJan.getDay() + 1) / 7);
-      const itemWeek = Math.ceil(((itemDate.getTime() - oneJan.getTime()) / 86400000 + oneJan.getDay() + 1) / 7);
-      return itemWeek === currentWeek && itemDate.getFullYear() === now.getFullYear();
-    } else if (filter === "month") {
-      return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(now);
+      end.setHours(23, 59, 59, 999);
+
+      return itemDate >= start && itemDate <= end;
     }
+
+    if (filter === "week") {
+      const start = new Date(now);
+      start.setDate(now.getDate() - now.getDay());
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+
+      return itemDate >= start && itemDate <= end;
+    }
+
+    if (filter === "month") {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      return itemDate >= start && itemDate <= end;
+    }
+
     return true;
   });
 
@@ -54,10 +90,11 @@ export default function WalletHistoryScreen() {
   const grouped = groupByDate(filteredHistory);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <View style={styles.container}>
+      {/* HEADER (STICKY) */}
       <Text style={styles.header}>Riwayat Pengeluaran</Text>
 
-      {/* Filter Buttons */}
+      {/* FILTER (STICKY) */}
       <View style={styles.filterContainer}>
         {(["day", "week", "month"] as const).map((f) => (
           <Pressable key={f} onPress={() => setFilter(f)} style={[styles.filterButton, filter === f && styles.filterButtonActive]}>
@@ -66,29 +103,45 @@ export default function WalletHistoryScreen() {
         ))}
       </View>
 
-      {filteredHistory.length === 0 ? (
-        <Text style={styles.subtitle}>Belum ada transaksi</Text>
-      ) : (
-        Object.entries(grouped).map(([date, items]) => {
-          return (
-            <View key={date} style={styles.dateCard}>
-              <Text style={styles.dateHeader}>{date}</Text>
-              {items.map((item) => (
-                <View key={item.id} style={styles.historyItem}>
-                  <Text style={styles.historyText}>{item.name}</Text>
-                  <Text style={styles.historyAmount}>{item.amount.toLocaleString()} IDR</Text>
-                </View>
-              ))}
-            </View>
-          );
-        })
-      )}
-    </ScrollView>
+      {/* SCROLL AREA */}
+      <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} scrollEventThrottle={16}>
+        {filteredHistory.length === 0 ? (
+          <Text style={styles.subtitle}>Belum ada transaksi</Text>
+        ) : (
+          Object.entries(grouped).map(([date, items]) => {
+            const expanded = expandedDates[date] ?? true;
+            const totalPerDay = items.reduce((s, i) => s + i.amount, 0);
+
+            return (
+              <View key={date} style={styles.dateCard}>
+                <Pressable style={styles.dateHeaderRow} onPress={() => toggleDate(date)}>
+                  <Text style={styles.dateHeader}>{date}</Text>
+                  <Text style={styles.dateTotal}>{totalPerDay.toLocaleString()} IDR</Text>
+                </Pressable>
+
+                {expanded &&
+                  items.map((item) => (
+                    <View key={item.id} style={styles.historyItem}>
+                      <Text style={styles.historyText}>{item.name}</Text>
+                      <Text style={styles.historyAmount}>{item.amount.toLocaleString()} IDR</Text>
+                    </View>
+                  ))}
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 16, backgroundColor: "#fefce8" }, // cerah & game-like
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: "#fefce8",
+  },
+  // cerah & game-like
   header: { color: "#6b7280", fontSize: 24, fontWeight: "bold", marginBottom: 16, textAlign: "center" },
   filterContainer: { flexDirection: "row", marginBottom: 16, justifyContent: "center", overflow: "visible" },
   filterButton: {
@@ -99,7 +152,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#000",
     backgroundColor: "#fff",
-    overflow: "hidden", 
+    overflow: "hidden",
     // shadow untuk iOS
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -137,4 +190,23 @@ const styles = StyleSheet.create({
   historyText: { color: "#6b7280", fontSize: 16 },
   historyAmount: { color: "#f59e0b", fontSize: 16, fontWeight: "bold" },
   subtitle: { color: "#9ca3af", fontSize: 14, textAlign: "center", marginTop: 16 },
+  dateHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+
+  dateTotal: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#16a34a",
+  },
+  scrollArea: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    paddingBottom: 32,
+  },
 });
