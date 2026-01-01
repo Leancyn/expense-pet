@@ -30,7 +30,7 @@
 
 Kamu bisa langsung download APK dan coba di HP Androidmu:
 
-[![Download APK](https://img.shields.io/badge/Download-APK-orange?style=for-the-badge&logo=android)](https://github.com/Leancyn/expense-pet/releases/download/v1.1.0/ExpensePet_v1.1.0.apk)
+[![Download APK](https://img.shields.io/badge/Download-APK-orange?style=for-the-badge&logo=android)](https://github.com/Leancyn/expense-pet/releases/download/v1.1.1/ExpensePet_v1.1.1.apk)
 
 ---
 
