@@ -7,7 +7,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Easing, Image, LayoutAnimation, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { triggerCriticalPetNotification } from "utils/notifications";
+import { cancelAllPetNotifications, handleCriticalPetReminder, triggerCriticalPetNotification } from "utils/notifications";
+
+// health constants
+export const CRITICAL_HEALTH = 10;
+const HAPPY_HEALTH = 60;
+const HEALTH_DECAY_PER_HOUR = 10;
+const MIN_HEALTH = 0;
+const MAX_HEALTH = 100;
+const DAILY_MIN_HEALTH = CRITICAL_HEALTH;
+const CRITICAL_MODAL_KEY = "criticalModalShown";
+const CRITICAL_NOTIF_KEY = "criticalNotifShown";
+
+// health decay
+const LAST_DECAY_KEY = "pet_last_decay";
+const LAST_HEALTH_UPDATE_KEY = "lastHealthUpdate";
 
 export const allPets = [
   { id: "1", name: "Kucing", price: 50, asset: require("../../assets/pets/cat.gif") },
@@ -23,7 +37,8 @@ export default function ExpensePetScreen() {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [pet, setPet] = useState<Pet>({ health: 10, level: 1, exp: 0 });
+  const [pet, setPet] = useState<Pet>({ health: MAX_HEALTH, level: 1, exp: 0 });
+  const [petLoaded, setPetLoaded] = useState(false);
   const [ownedPets, setOwnedPets] = useState<string[]>(["1"]);
   const [activePetId, setActivePetId] = useState("1");
   const [wallet, setWallet] = useState({ coins: 0 });
@@ -62,7 +77,7 @@ export default function ExpensePetScreen() {
     // jika first install / petData kosong
     if (!petData) {
       petData = {
-        health: 10, // langsung sekarat
+        health: MAX_HEALTH, // langsung sekarat
         level: 1, // level awal
         exp: 0, // experience awal
       };
@@ -80,6 +95,8 @@ export default function ExpensePetScreen() {
     const savedActivePet = await AsyncStorage.getItem("activePetId");
     const activeId = savedActivePet && pets.includes(savedActivePet) ? savedActivePet : "1";
     setActivePetId(activeId);
+
+    setPetLoaded(true);
   }, []);
 
   const loadWalletData = useCallback(async () => {
@@ -95,6 +112,10 @@ export default function ExpensePetScreen() {
   );
 
   useEffect(() => {
+    handleCriticalPetReminder(pet.health);
+  }, [pet.health]);
+
+  useEffect(() => {
     Animated.timing(healthAnim, {
       toValue: pet.health,
       duration: 800,
@@ -104,31 +125,47 @@ export default function ExpensePetScreen() {
   }, [pet.health]);
 
   useEffect(() => {
-    if (pet.health <= 20 && !criticalModalShown) {
-      setModalType("danger");
-      setModalTitle("Pet dalam kondisi kritis");
-      setModalMessage("Darah pet kamu hampir habis.\nCatat pengeluaran untuk memulihkannya.");
-      setModalVisible(true);
-      setCriticalModalShown(true);
-    }
+    const checkCriticalModal = async () => {
+      if (pet.health <= CRITICAL_HEALTH) {
+        const shown = await AsyncStorage.getItem(CRITICAL_MODAL_KEY);
 
-    // reset kalau pet sudah sehat
-    if (pet.health > 20 && criticalModalShown) {
-      setCriticalModalShown(false);
-    }
+        if (!shown) {
+          setModalType("danger");
+          setModalTitle("Pet dalam kondisi kritis");
+          setModalMessage("Darah pet kamu hampir habis.\nCatat pengeluaran untuk memulihkannya.");
+          setModalVisible(true);
+
+          await AsyncStorage.setItem(CRITICAL_MODAL_KEY, "true");
+        }
+      } else {
+        // reset kalau pet sudah sehat
+        await AsyncStorage.removeItem(CRITICAL_MODAL_KEY);
+      }
+    };
+
+    checkCriticalModal();
   }, [pet.health]);
 
   // notif pet sekarat
   useEffect(() => {
-    if (pet.health <= 20 && !criticalNotified) {
-      triggerCriticalPetNotification(); // notif
-      setCriticalNotified(true);
-    }
+    if (!pet) return; // guard
 
-    if (pet.health > 20) {
-      setCriticalNotified(false);
-    }
-  }, [pet.health]);
+    const checkCriticalNotif = async () => {
+      if (pet.health <= CRITICAL_HEALTH) {
+        const notified = await AsyncStorage.getItem(CRITICAL_NOTIF_KEY);
+
+        if (!notified) {
+          triggerCriticalPetNotification();
+          await AsyncStorage.setItem(CRITICAL_NOTIF_KEY, "true");
+        }
+      } else {
+        await AsyncStorage.removeItem(CRITICAL_NOTIF_KEY);
+        cancelAllPetNotifications();
+      }
+    };
+
+    checkCriticalNotif();
+  }, [pet]);
 
   const submitExpense = async () => {
     if (!name || !amount) {
@@ -169,41 +206,64 @@ export default function ExpensePetScreen() {
   });
 
   const healthColor = healthAnim.interpolate({
-    inputRange: [0, 20, 50, 80, 100],
+    inputRange: [0, CRITICAL_HEALTH, 50, 80, 100],
     outputRange: ["#ef4444", "#f97316", "#facc15", "#22c55e", "#22c55e"],
   });
 
+  // Cek apakah sudah lewat tengah malam
+  const hasPassedMidnight = (last: number, now: number) => {
+    const lastDate = new Date(last);
+    const nowDate = new Date(now);
+
+    return lastDate.getFullYear() !== nowDate.getFullYear() || lastDate.getMonth() !== nowDate.getMonth() || lastDate.getDate() !== nowDate.getDate();
+  };
+
   // Health decay setiap beberapa waktu
+  const applyHealthDecay = async (pet: Pet): Promise<Pet> => {
+    const now = Date.now();
+    const lastUpdateStr = await AsyncStorage.getItem(LAST_HEALTH_UPDATE_KEY);
+
+    // first run
+    if (!lastUpdateStr) {
+      await AsyncStorage.setItem(LAST_HEALTH_UPDATE_KEY, now.toString());
+      return pet;
+    }
+
+    const lastUpdate = Number(lastUpdateStr);
+    let updatedPet = { ...pet };
+
+    // hourly decay
+    const hoursPassed = Math.floor((now - lastUpdate) / (1000 * 60 * 60));
+    if (hoursPassed > 0) {
+      updatedPet.health = Math.max(updatedPet.health - hoursPassed * HEALTH_DECAY_PER_HOUR, MIN_HEALTH);
+    }
+
+    // midnight rule (once per day)
+    if (hasPassedMidnight(lastUpdate, now)) {
+      if (updatedPet.health > DAILY_MIN_HEALTH) {
+        updatedPet.health = DAILY_MIN_HEALTH;
+      }
+    }
+
+    // save only if changed
+    if (updatedPet.health !== pet.health) {
+      await savePet(updatedPet);
+    }
+
+    await AsyncStorage.setItem(LAST_HEALTH_UPDATE_KEY, now.toString());
+    return updatedPet;
+  };
+
   useEffect(() => {
-    const interval = setInterval(async () => {
-      const now = new Date();
-      const lastUpdateStr = await AsyncStorage.getItem("lastHealthUpdate");
-      let lastUpdate = lastUpdateStr ? new Date(lastUpdateStr) : now;
+    if (!petLoaded || !pet) return;
 
-      // Hitung jam yang sudah lewat
-      const hoursPassed = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60));
-      let petData = await getPet();
+    const run = async () => {
+      const updatedPet = await applyHealthDecay(pet);
+      setPet(updatedPet);
+    };
 
-      
-
-      if (hoursPassed >= 1) {
-        const healthLoss = hoursPassed * 10; // turun 10 per jam
-        petData.health = Math.max(petData.health - healthLoss, 0);
-        await savePet(petData);
-        setPet(petData);
-        await AsyncStorage.setItem("lastHealthUpdate", now.toISOString());
-      }
-
-      // Pastikan pukul 12 malam, health minimal 10 (pet sekarat)
-      if (now.getHours() === 0 && now.getMinutes() === 0 && petData.health > 10) {
-        petData.health = 10;
-        await savePet(petData);
-        setPet(petData);
-      }
-    }, 60000); // cek tiap menit
-
-    return () => clearInterval(interval);
-  }, []);
+    run();
+  }, [petLoaded]);
 
   // REF animasi coin bertambah
   const coinAddAnim = useRef(new Animated.Value(0)).current;
@@ -257,7 +317,7 @@ export default function ExpensePetScreen() {
 
         {/* Status pet */}
         <View style={styles.petStatusWrapper}>
-          <Text style={styles.petStatusText}>{pet.health > 60 ? "😊 Happy" : pet.health > 20 ? "😐 Lesu" : "😢 Sekarat"}</Text>
+          <Text style={styles.petStatusText}>{pet.health > HAPPY_HEALTH ? "😊 Happy" : pet.health > CRITICAL_HEALTH ? "😐 Lesu" : "😢 Sekarat"}</Text>
         </View>
 
         {/* Pet image */}
@@ -342,7 +402,7 @@ const styles = StyleSheet.create({
   walletText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#f59e0b",
+    color: "#374151",
   },
 
   coinAddImage: {

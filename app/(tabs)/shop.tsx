@@ -34,7 +34,12 @@ export default function ShopScreen() {
       const load = async () => {
         const w = await loadWallet();
         setWallet(w);
+
+        const petsJson = await AsyncStorage.getItem("ownedPets");
+        const savedPets: string[] = petsJson ? JSON.parse(petsJson) : [];
+        setOwnedPets(savedPets);
       };
+
       load();
     }, [])
   );
@@ -46,9 +51,7 @@ export default function ShopScreen() {
 
       const petsJson = await AsyncStorage.getItem("ownedPets");
       const savedPets: string[] = petsJson ? JSON.parse(petsJson) : [];
-      if (!savedPets.includes("1")) savedPets.push("1");
       setOwnedPets(savedPets);
-      await AsyncStorage.setItem("ownedPets", JSON.stringify(savedPets));
     };
     init();
   }, []);
@@ -137,7 +140,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#ffffff" },
   coinRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginBottom: 16 },
   coinImage: { width: 28, height: 28, marginRight: 8 },
-  walletText: { fontSize: 22, fontWeight: "bold", color: "#22c55e" },
+  walletText: { fontSize: 22, fontWeight: "bold", color: "#374151" },
   petCard: {
     flexDirection: "row",
     alignItems: "center",

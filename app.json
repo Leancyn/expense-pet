@@ -2,7 +2,7 @@
   "expo": {
     "name": "Expense Pet",
     "slug": "expense-pet",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "orientation": "portrait",
     "icon": "./assets/images/favicon.png",
     "scheme": "expensepet",
@@ -20,7 +20,8 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.leancyn.expensepet",
-      "jsEngine": "hermes"
+      "jsEngine": "hermes",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",

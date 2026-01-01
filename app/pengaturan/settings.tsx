@@ -1,4 +1,6 @@
+import { saveWallet } from "@/storage/walletStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CRITICAL_HEALTH } from "app/(tabs)/pet";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -29,6 +31,20 @@ export default function SettingsScreen() {
 
   const confirmReset = async () => {
     await AsyncStorage.clear();
+
+    // DEFAULT SETUP
+    await AsyncStorage.setItem("ownedPets", JSON.stringify(["1"]));
+    await AsyncStorage.setItem("activePetId", "1");
+    await AsyncStorage.setItem(
+      "pet",
+      JSON.stringify({
+        health: CRITICAL_HEALTH,
+        level: 1,
+        exp: 0,
+      })
+    );
+    await saveWallet({ coins: 0 });
+
     showModal("success", "Berhasil", "Data berhasil direset!", true);
   };
 
@@ -120,7 +136,7 @@ export default function SettingsScreen() {
             )}
 
             {/* Modal untuk ERROR / WARNING feedback */}
-            {modalType === "warning" && modalTitle !== "Reset Data" && (
+            {modalTitle !== "Reset Data" && (
               <Pressable style={[styles.modalButton, styles.cancelButton]} onPress={() => setModalVisible(false)}>
                 <Text style={styles.modalButtonText}>Tutup</Text>
               </Pressable>
