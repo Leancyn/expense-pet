@@ -9,14 +9,14 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { triggerCriticalPetNotification } from "utils/notifications";
 
-const allPets = [
+export const allPets = [
   { id: "1", name: "Kucing", price: 50, asset: require("../../assets/pets/cat.gif") },
   { id: "2", name: "Panda", price: 70, asset: require("../../assets/pets/panda.gif") },
   { id: "3", name: "Alpaca", price: 40, asset: require("../../assets/pets/alpaca.gif") },
   { id: "4", name: "Axolotl", price: 80, asset: require("../../assets/pets/axolotl.gif") },
   { id: "5", name: "Kepiting", price: 100, asset: require("../../assets/pets/crab.gif") },
   { id: "6", name: "Unicorn", price: 120, asset: require("../../assets/pets/unicorn.gif") },
-  { id: "7", name: "Monster Lochness", price: 150, asset: require("../../assets/pets/loch-ness-monster.gif") },
+  { id: "7", name: "Lochness", price: 150, asset: require("../../assets/pets/loch-ness-monster.gif") },
 ];
 
 export default function ExpensePetScreen() {

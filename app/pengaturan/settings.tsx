@@ -1,17 +1,17 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
-import { Linking, Platform, Pressable, StyleSheet, Text, View, Modal, Image } from "react-native";
 import { useState } from "react";
+import { Image, Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<"warning" | "success">("warning");
+  const [modalType, setModalType] = useState<"warning" | "success" | "error">("warning");
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
 
-  const showModal = (type: "warning" | "success", title: string, message: string, autoClose = false) => {
+  const showModal = (type: "warning" | "success" | "error", title: string, message: string, autoClose = false) => {
     setModalType(type);
     setModalTitle(title);
     setModalMessage(message);
@@ -22,6 +22,7 @@ export default function SettingsScreen() {
     }
   };
 
+  // ================== RESET DATA ==================
   const resetData = () => {
     showModal("warning", "Reset Data", "Apakah kamu yakin ingin menghapus semua data?");
   };
@@ -31,20 +32,29 @@ export default function SettingsScreen() {
     showModal("success", "Berhasil", "Data berhasil direset!", true);
   };
 
+  // ================== FEEDBACK ==================
   const sendFeedback = async () => {
     const email = "ridhombrk889@gmail.com";
     const subject = encodeURIComponent("Masukan / Bug Expense Pet");
     const body = encodeURIComponent("Halo, saya ingin memberikan masukan atau melaporkan bug:\n\n");
     const url = `mailto:${email}?subject=${subject}&body=${body}`;
 
-    const supported = await Linking.canOpenURL(url);
-    if (!supported) {
-      showModal("warning", "Error", "Tidak bisa membuka aplikasi email.");
-      return;
+    try {
+      const supported = await Linking.canOpenURL(url);
+
+      if (!supported) {
+        showModal("warning", "Tidak Bisa Membuka Email", `Silakan kirim email ke:\n${email}`);
+        return;
+      }
+
+      await Linking.openURL(url);
+    } catch (error) {
+      console.log("sendFeedback error:", error);
+      showModal("warning", "Terjadi Kesalahan", `Tidak bisa membuka aplikasi email. Silakan kirim email ke:\n${email}`);
     }
-    await Linking.openURL(url);
   };
 
+  // ================== MODAL ICON ==================
   const modalIcon = () => {
     if (modalType === "success") return require("../../assets/modal-icons/success.gif");
     return require("../../assets/modal-icons/warning.gif");
@@ -97,7 +107,8 @@ export default function SettingsScreen() {
             <Text style={styles.modalTitle}>{modalTitle}</Text>
             <Text style={styles.modalText}>{modalMessage}</Text>
 
-            {modalType === "warning" && (
+            {/* Modal untuk RESET DATA */}
+            {modalType === "warning" && modalTitle === "Reset Data" && (
               <View style={styles.modalButtonRow}>
                 <Pressable style={[styles.modalButton, styles.cancelButton]} onPress={() => setModalVisible(false)}>
                   <Text style={styles.modalButtonText}>Batal</Text>
@@ -107,16 +118,23 @@ export default function SettingsScreen() {
                 </Pressable>
               </View>
             )}
+
+            {/* Modal untuk ERROR / WARNING feedback */}
+            {modalType === "warning" && modalTitle !== "Reset Data" && (
+              <Pressable style={[styles.modalButton, styles.cancelButton]} onPress={() => setModalVisible(false)}>
+                <Text style={styles.modalButtonText}>Tutup</Text>
+              </Pressable>
+            )}
           </View>
         </View>
       </Modal>
     </View>
   );
 }
-  
+
 const styles = StyleSheet.create({
   container: { padding: 16, backgroundColor: "#fefce8", flex: 1, justifyContent: "center" },
-  header: { fontSize: 28, fontWeight: "bold", color: "#6b7280", marginBottom: 14,marginTop: -30, textAlign: "center" },
+  header: { fontSize: 28, fontWeight: "bold", color: "#6b7280", marginBottom: 14, marginTop: -30, textAlign: "center" },
   card: {
     backgroundColor: "#ffffff",
     borderRadius: 24,

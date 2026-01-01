@@ -1,7 +1,37 @@
+import { getExpenses } from "@/storage/expenseStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import { getDailyExpenses } from "../src/storage/expenseStorage";
+
+// const EXPENSE_KEY = "EXPENSES";
+
+// const getDailyExpenses = async (): Promise<{ amount: number; date: string }[]> => {
+//   const json = await AsyncStorage.getItem(EXPENSE_KEY);
+//   const allExpenses = json ? JSON.parse(json) : [];
+//   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+//   return allExpenses.filter((e: any) => e.date.slice(0, 10) === today);
+// };
+
+const SLOT_KEYS = {
+  morning: "lastNotifMorning",
+  afternoon: "lastNotifAfternoon",
+  evening: "lastNotifEvening",
+};
+
+const SLOTS = [
+  { key: "morning", hour: 8 },
+  { key: "afternoon", hour: 12 },
+  { key: "evening", hour: 18 },
+];
+
+// Helper: slot sekarang
+const getCurrentSlot = () => {
+  const hour = new Date().getHours();
+  if (hour >= 8 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 18) return "afternoon";
+  if (hour >= 18 && hour < 23) return "evening";
+  return null;
+};
 
 /**
  * Notification handler (SDK terbaru wajib lengkap)
@@ -106,23 +136,27 @@ export const checkDailyExpenseNotification = async () => {
   const granted = await requestNotificationPermission();
   if (!granted) return;
 
-  const dailyExpenses = await getDailyExpenses();
-  const totalToday = dailyExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const allExpenses = await getExpenses();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const dailyExpenses = allExpenses.filter((e: any) => e.date.slice(0, 10) === todayStr);
+  const totalToday = dailyExpenses.reduce((sum: number, e: any) => sum + e.amount, 0);
 
-  const today = new Date().toDateString();
-  const lastNotif = await AsyncStorage.getItem("lastHighExpenseNotif");
+  if (totalToday <= 200000) return;
 
-  // Cuma notif kalau total > 200rb dan belum notif hari ini
-  if (totalToday > 200000 && lastNotif !== today) {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Pengeluaran Harian Tinggi!",
-        body: `Total pengeluaran hari ini Rp${totalToday.toLocaleString()}`,
-        sound: true,
-      },
-      trigger: null,
-    });
+  const slot = getCurrentSlot();
+  if (!slot) return;
 
-    await AsyncStorage.setItem("lastHighExpenseNotif", today);
-  }
+  const lastNotif = await AsyncStorage.getItem(SLOT_KEYS[slot]);
+  if (lastNotif === todayStr) return;
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "Pengeluaran Mu Tinggi Banget!",
+      body: `Total pengeluaran hari ini Rp${totalToday.toLocaleString()}`,
+      sound: true,
+    },
+    trigger: null,
+  });
+
+  await AsyncStorage.setItem(SLOT_KEYS[slot], todayStr);
 };

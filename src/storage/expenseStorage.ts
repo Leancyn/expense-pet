@@ -34,3 +34,27 @@ export const getDailyExpenses = async (): Promise<{ amount: number; date: string
   const today = new Date().toISOString().slice(0, 10); // format YYYY-MM-DD
   return allExpenses.filter((e: any) => e.date.slice(0, 10) === today);
 };
+
+// Hapus data lama (bukan bulan ini)
+const removeOldExpenses = async () => {
+  try {
+    const expensesJson = await AsyncStorage.getItem(EXPENSE_KEY);
+    if (!expensesJson) return;
+
+    const expenses: Expense[] = JSON.parse(expensesJson);
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // Filter hanya bulan & tahun sekarang
+    const filtered = expenses.filter((e) => {
+      const d = new Date(e.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+
+    // Simpan yang tersisa
+    await AsyncStorage.setItem(EXPENSE_KEY, JSON.stringify(filtered));
+  } catch (error) {
+    console.error("Error removing old expenses:", error);
+  }
+};
