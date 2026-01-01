@@ -36,7 +36,7 @@ Kamu bisa langsung download APK dan coba di HP Androidmu:
 
 ## Instalasi (Untuk Developer)
 
-1. Clone repository:
+Clone repository:
 
 ```bash
 git clone https://github.com/Leancyn/expense-pet.git
