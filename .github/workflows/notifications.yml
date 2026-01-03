@@ -1,7 +1,7 @@
 name: Expo Push Notification
 
 on:
-  workflow_dispatch:   # bisa dijalankan manual
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -16,10 +16,13 @@ jobs:
           curl -X POST https://exp.host/--/api/v2/push/send \
           -H "Content-Type: application/json" \
           -d '{
-            "to": "'"$EXPO_PUSH_TOKEN"'",
+            "to": '"$EXPO_PUSH_TOKENS"',
             "title": "Expense Pet",
-            "body": "Ada update baru di repository",
-            "sound": "default"
+            "body": "Build berhasil",
+            "sound": "default",
+            "data": {
+              "type": "ci_build"
+            }
           }'
         env:
-          EXPO_PUSH_TOKEN: ${{ secrets.EXPO_PUSH_TOKEN }}
+          EXPO_PUSH_TOKENS: ${{ secrets.EXPO_PUSH_TOKENS }}
