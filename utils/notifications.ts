@@ -1,9 +1,8 @@
 import { getExpenses } from "@/storage/expenseStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CRITICAL_HEALTH, CRITICAL_REMINDER_KEY } from "app/(tabs)/pet";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import { CRITICAL_HEALTH } from "app/(tabs)/pet";
-
 
 // const EXPENSE_KEY = "EXPENSES";
 
@@ -14,6 +13,7 @@ import { CRITICAL_HEALTH } from "app/(tabs)/pet";
 //   return allExpenses.filter((e: any) => e.date.slice(0, 10) === today);
 // };
 
+const triggerTime = new Date(Date.now() + 30 * 60 * 1000);
 const CRITICAL_ALARM_ID = "pet_critical_alarm";
 
 const SLOT_KEYS = {
@@ -106,45 +106,36 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
   });
 }
 
-export async function scheduleCriticalPetReminder() {
-  // pastikan tidak dobel alarm
-  await Notifications.cancelScheduledNotificationAsync(CRITICAL_ALARM_ID);
+export const handleCriticalPetReminder = async (health: number) => {
+  const granted = await requestNotificationPermission();
+  if (!granted) return;
 
-  await Notifications.scheduleNotificationAsync({
-    identifier: CRITICAL_ALARM_ID,
-    content: {
-      title: "🐾 Pet kamu sekarat!",
-      body: "Catat pengeluaran sekarang untuk menyelamatkan pet kamu",
-      sound: true,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: 60 * 60,
-    },
-  });
-}
+  if (health <= CRITICAL_HEALTH) {
+    const scheduled = await AsyncStorage.getItem(CRITICAL_REMINDER_KEY);
+    if (scheduled) return;
 
-export async function handleCriticalPetReminder(petHealth: number) {
-  if (petHealth <= CRITICAL_HEALTH) {
-    await scheduleCriticalPetReminder();
+    await Notifications.scheduleNotificationAsync({
+      identifier: "critical-pet-reminder",
+      content: {
+        title: "🐾 Pet Kamu Sekarat",
+        body: "Segera rawat pet kamu agar tidak mati.",
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: __DEV__ ? 10 : 60 * 60,
+      },
+    });
+
+    await AsyncStorage.setItem(CRITICAL_REMINDER_KEY, "true");
   } else {
-    await Notifications.cancelScheduledNotificationAsync("pet_critical_alarm");
+    await Notifications.cancelScheduledNotificationAsync("critical-pet-reminder");
+    await AsyncStorage.removeItem(CRITICAL_REMINDER_KEY);
   }
-}
+};
 
 export async function cancelAllPetNotifications() {
   await Notifications.cancelAllScheduledNotificationsAsync();
-}
-
-export async function triggerCriticalPetNotification() {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "Pet kamu sekarat",
-      body: "Catat pengeluaran sekarang untuk menyelamatkan pet kamu",
-      sound: true,
-    },
-    trigger: null, // langsung muncul
-  });
 }
 
 /** Cek pengeluaran harian dan notif sekali per hari */
@@ -154,25 +145,27 @@ export const checkDailyExpenseNotification = async () => {
 
   const allExpenses = await getExpenses();
   const todayStr = new Date().toISOString().slice(0, 10);
-  const dailyExpenses = allExpenses.filter((e: any) => e.date.slice(0, 10) === todayStr);
-  const totalToday = dailyExpenses.reduce((sum: number, e: any) => sum + e.amount, 0);
+
+  const totalToday = allExpenses.filter((e: any) => e.date.slice(0, 10) === todayStr).reduce((sum: number, e: any) => sum + e.amount, 0);
 
   if (totalToday <= 200000) return;
 
-  const slot = getCurrentSlot();
-  if (!slot) return;
+  const lastNotifDate = await AsyncStorage.getItem("dailyExpenseNotifSent");
+  if (lastNotifDate === todayStr) return;
 
-  const lastNotif = await AsyncStorage.getItem(SLOT_KEYS[slot]);
-  if (lastNotif === todayStr) return;
-
+  // Tentukan waktu trigger berdasarkan slot sekarang
   await Notifications.scheduleNotificationAsync({
+    identifier: "daily-expense-reminder",
     content: {
-      title: "Pengeluaran Mu Tinggi Banget!",
-      body: `Total pengeluaran hari ini Rp${totalToday.toLocaleString()}`,
+      title: "💸 Pengeluaranmu Sudah Tinggi",
+      body: `Hari ini sudah Rp${totalToday.toLocaleString()}. Jangan kebablasan ya!`,
       sound: true,
     },
-    trigger: null,
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: triggerTime,
+    },
   });
 
-  await AsyncStorage.setItem(SLOT_KEYS[slot], todayStr);
+  await AsyncStorage.setItem("dailyExpenseNotifSent", todayStr);
 };

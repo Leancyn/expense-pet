@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Easing, Image, LayoutAnimation, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { cancelAllPetNotifications, handleCriticalPetReminder, triggerCriticalPetNotification } from "utils/notifications";
+import { handleCriticalPetReminder } from "utils/notifications";
 
 // health constants
 export const CRITICAL_HEALTH = 10;
@@ -16,12 +16,14 @@ const HEALTH_DECAY_PER_HOUR = 10;
 const MIN_HEALTH = 0;
 const MAX_HEALTH = 100;
 const DAILY_MIN_HEALTH = CRITICAL_HEALTH;
-const CRITICAL_MODAL_KEY = "criticalModalShown";
-const CRITICAL_NOTIF_KEY = "criticalNotifShown";
 
 // health decay
 const LAST_DECAY_KEY = "pet_last_decay";
 const LAST_HEALTH_UPDATE_KEY = "lastHealthUpdate";
+
+// modal & reminder keys
+export const CRITICAL_MODAL_KEY = "criticalPetModalShown";
+export const CRITICAL_REMINDER_KEY = "criticalPetReminderScheduled";
 
 export const allPets = [
   { id: "1", name: "Kucing", price: 50, asset: require("../../assets/pets/cat.gif") },
@@ -46,8 +48,7 @@ export default function ExpensePetScreen() {
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState<"success" | "warning" | "danger">("success");
-  const [criticalNotified, setCriticalNotified] = useState(false);
-  const [criticalModalShown, setCriticalModalShown] = useState(false);
+  const [criticalModalVisible, setCriticalModalVisible] = useState(false);
 
   // HELPER FUNCTIONS
   const showModal = (type: "success" | "warning" | "danger", title: string, message: string, autoClose = false) => {
@@ -112,8 +113,21 @@ export default function ExpensePetScreen() {
   );
 
   useEffect(() => {
+    if (!petLoaded) return;
+
+    if (pet.health <= CRITICAL_HEALTH) {
+      setModalType("danger");
+      setModalTitle("Pet Sekarat");
+      setModalMessage("Pet kamu dalam kondisi kritis. Segera rawat agar tidak mati.");
+      setModalVisible(true);
+    }
+  }, [pet.health, petLoaded]);
+
+  // notif critical pet reminder
+  useEffect(() => {
+    if (!petLoaded) return;
     handleCriticalPetReminder(pet.health);
-  }, [pet.health]);
+  }, [pet.health, petLoaded]);
 
   useEffect(() => {
     Animated.timing(healthAnim, {
@@ -123,49 +137,6 @@ export default function ExpensePetScreen() {
       easing: Easing.out(Easing.ease),
     }).start();
   }, [pet.health]);
-
-  useEffect(() => {
-    const checkCriticalModal = async () => {
-      if (pet.health <= CRITICAL_HEALTH) {
-        const shown = await AsyncStorage.getItem(CRITICAL_MODAL_KEY);
-
-        if (!shown) {
-          setModalType("danger");
-          setModalTitle("Pet dalam kondisi kritis");
-          setModalMessage("Darah pet kamu hampir habis.\nCatat pengeluaran untuk memulihkannya.");
-          setModalVisible(true);
-
-          await AsyncStorage.setItem(CRITICAL_MODAL_KEY, "true");
-        }
-      } else {
-        // reset kalau pet sudah sehat
-        await AsyncStorage.removeItem(CRITICAL_MODAL_KEY);
-      }
-    };
-
-    checkCriticalModal();
-  }, [pet.health]);
-
-  // notif pet sekarat
-  useEffect(() => {
-    if (!pet) return; // guard
-
-    const checkCriticalNotif = async () => {
-      if (pet.health <= CRITICAL_HEALTH) {
-        const notified = await AsyncStorage.getItem(CRITICAL_NOTIF_KEY);
-
-        if (!notified) {
-          triggerCriticalPetNotification();
-          await AsyncStorage.setItem(CRITICAL_NOTIF_KEY, "true");
-        }
-      } else {
-        await AsyncStorage.removeItem(CRITICAL_NOTIF_KEY);
-        cancelAllPetNotifications();
-      }
-    };
-
-    checkCriticalNotif();
-  }, [pet]);
 
   const submitExpense = async () => {
     if (!name || !amount) {

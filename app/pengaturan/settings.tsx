@@ -123,7 +123,7 @@ export default function SettingsScreen() {
             <Text style={styles.modalTitle}>{modalTitle}</Text>
             <Text style={styles.modalText}>{modalMessage}</Text>
 
-            {/* Modal untuk RESET DATA */}
+            {/* RESET DATA CONFIRM */}
             {modalType === "warning" && modalTitle === "Reset Data" && (
               <View style={styles.modalButtonRow}>
                 <Pressable style={[styles.modalButton, styles.cancelButton]} onPress={() => setModalVisible(false)}>
@@ -135,8 +135,8 @@ export default function SettingsScreen() {
               </View>
             )}
 
-            {/* Modal untuk ERROR / WARNING feedback */}
-            {modalTitle !== "Reset Data" && (
+            {/* GENERAL CLOSE BUTTON */}
+            {modalType !== "success" && modalTitle !== "Reset Data" && (
               <Pressable style={[styles.modalButton, styles.cancelButton]} onPress={() => setModalVisible(false)}>
                 <Text style={styles.modalButtonText}>Tutup</Text>
               </Pressable>
