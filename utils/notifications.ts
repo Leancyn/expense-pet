@@ -13,61 +13,21 @@ import { Platform } from "react-native";
 //   return allExpenses.filter((e: any) => e.date.slice(0, 10) === today);
 // };
 
-const triggerTime = new Date(Date.now() + 30 * 60 * 1000);
-const CRITICAL_ALARM_ID = "pet_critical_alarm";
-
-const SLOT_KEYS = {
-  morning: "lastNotifMorning",
-  afternoon: "lastNotifAfternoon",
-  evening: "lastNotifEvening",
-};
-
-const SLOTS = [
-  { key: "morning", hour: 8 },
-  { key: "afternoon", hour: 12 },
-  { key: "evening", hour: 18 },
-];
-
-// Helper: slot sekarang
-const getCurrentSlot = () => {
-  const hour = new Date().getHours();
-  if (hour >= 8 && hour < 12) return "morning";
-  if (hour >= 12 && hour < 18) return "afternoon";
-  if (hour >= 18 && hour < 23) return "evening";
-  return null;
-};
-
-/**
- * Notification handler (SDK terbaru wajib lengkap)
- */
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
-
 /**
  * Request permission + Android channel
  */
 export async function requestNotificationPermission(): Promise<boolean> {
   const { status } = await Notifications.getPermissionsAsync();
-  let finalStatus = status;
-
   if (status !== "granted") {
-    const { status: requestedStatus } = await Notifications.requestPermissionsAsync();
-    finalStatus = requestedStatus;
+    const req = await Notifications.requestPermissionsAsync();
+    if (req.status !== "granted") return false;
   }
-
-  if (finalStatus !== "granted") return false;
 
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
       name: "Default",
       importance: Notifications.AndroidImportance.HIGH,
+      sound: "default",
     });
   }
 
@@ -91,28 +51,32 @@ export async function triggerSuccessNotification(message: string) {
  * Daily reminder (calendar trigger)
  */
 export async function scheduleDailyReminder(hour: number, minute: number) {
-  await Notifications.cancelAllScheduledNotificationsAsync();
-
   await Notifications.scheduleNotificationAsync({
+    identifier: "daily-reminder",
     content: {
       title: "Jangan lupa catat pengeluaran",
       body: "Biar pet kamu tetap sehat",
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: 20,
-      minute: 0,
+      hour,
+      minute,
     },
   });
 }
 
 export const handleCriticalPetReminder = async (health: number) => {
-  const granted = await requestNotificationPermission();
-  if (!granted) return;
+  if (!(await requestNotificationPermission())) return;
+
+  const now = Date.now();
+  const COOLDOWN = __DEV__ ? 60_000 : 6 * 60 * 60 * 1000; // 1 menit dev, 6 jam prod
 
   if (health <= CRITICAL_HEALTH) {
-    const scheduled = await AsyncStorage.getItem(CRITICAL_REMINDER_KEY);
-    if (scheduled) return;
+    const lastSent = await AsyncStorage.getItem(CRITICAL_REMINDER_KEY);
+
+    if (lastSent && now - Number(lastSent) < COOLDOWN) {
+      return; // masih cooldown
+    }
 
     await Notifications.scheduleNotificationAsync({
       identifier: "critical-pet-reminder",
@@ -120,16 +84,13 @@ export const handleCriticalPetReminder = async (health: number) => {
         title: "🐾 Pet Kamu Sekarat",
         body: "Segera rawat pet kamu agar tidak mati.",
         sound: true,
+        data: { type: "critical_pet" },
       },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: __DEV__ ? 10 : 60 * 60,
-      },
+      trigger: null, // INSTANT, BUKAN INTERVAL
     });
 
-    await AsyncStorage.setItem(CRITICAL_REMINDER_KEY, "true");
+    await AsyncStorage.setItem(CRITICAL_REMINDER_KEY, now.toString());
   } else {
-    await Notifications.cancelScheduledNotificationAsync("critical-pet-reminder");
     await AsyncStorage.removeItem(CRITICAL_REMINDER_KEY);
   }
 };
@@ -140,32 +101,32 @@ export async function cancelAllPetNotifications() {
 
 /** Cek pengeluaran harian dan notif sekali per hari */
 export const checkDailyExpenseNotification = async () => {
-  const granted = await requestNotificationPermission();
-  if (!granted) return;
+  if (!(await requestNotificationPermission())) return;
 
-  const allExpenses = await getExpenses();
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const expenses = await getExpenses();
+  const today = new Date().toISOString().slice(0, 10);
 
-  const totalToday = allExpenses.filter((e: any) => e.date.slice(0, 10) === todayStr).reduce((sum: number, e: any) => sum + e.amount, 0);
+  const total = expenses.filter((e) => e.date.slice(0, 10) === today).reduce((s, e) => s + e.amount, 0);
 
-  if (totalToday <= 200000) return;
+  if (total <= 200_000) return;
 
-  const lastNotifDate = await AsyncStorage.getItem("dailyExpenseNotifSent");
-  if (lastNotifDate === todayStr) return;
+  const sent = await AsyncStorage.getItem("dailyExpenseNotifSent");
+  if (sent === today) return;
 
-  // Tentukan waktu trigger berdasarkan slot sekarang
+  const triggerDate = new Date();
+  triggerDate.setMinutes(triggerDate.getMinutes() + 30);
+
   await Notifications.scheduleNotificationAsync({
     identifier: "daily-expense-reminder",
     content: {
       title: "💸 Pengeluaranmu Sudah Tinggi",
-      body: `Hari ini sudah Rp${totalToday.toLocaleString()}. Jangan kebablasan ya!`,
-      sound: true,
+      body: `Hari ini sudah Rp${total.toLocaleString()}`,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: triggerTime,
+      date: triggerDate,
     },
   });
 
-  await AsyncStorage.setItem("dailyExpenseNotifSent", todayStr);
+  await AsyncStorage.setItem("dailyExpenseNotifSent", today);
 };
