@@ -1,0 +1,28 @@
+name: Expo Push Notification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Expo Push Notification
+        run: |
+          curl -X POST https://exp.host/--/api/v2/push/send \
+          -H "Content-Type: application/json" \
+          -d '{
+            "to": '"$EXPO_PUSH_TOKENS"',
+            "title": "Expense Pet",
+            "body": "Build berhasil",
+            "sound": "default",
+            "data": {
+              "type": "ci_build"
+            }
+          }'
+        env:
+          EXPO_PUSH_TOKENS: ${{ secrets.EXPO_PUSH_TOKENS }}
