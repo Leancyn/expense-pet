@@ -2,9 +2,10 @@
   "build": {
     "production": {
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
-      "releaseChannel": "production"
+      "releaseChannel": "default"
     }
   }
 }
